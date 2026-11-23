@@ -1,0 +1,233 @@
+<Window x:Class="AimpTaskbarPlayer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AIMP · плеер в панели задач"
+        Width="404" Height="48"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ResizeMode="NoResize" ShowActivated="False"
+        WindowStartupLocation="Manual"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Grayscale"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+
+    <Window.Resources>
+        <Style x:Key="GlyphButton" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonPressed}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.3" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MenuItemButton" TargetType="{x:Type Button}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuText}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="8,0">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MenuHover}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- The near-invisible background keeps the whole area clickable in a layered window. -->
+    <Grid Background="#01000000">
+        <Border x:Name="Surface" CornerRadius="8" Background="Transparent" BorderThickness="0"
+                MouseLeftButtonDown="OnRootMouseDown"
+                MouseMove="OnRootMouseMove"
+                MouseLeftButtonUp="OnRootMouseUp"
+                MouseRightButtonUp="OnRootRightButtonUp"
+                PreviewMouseWheel="OnMouseWheel">
+
+            <Grid>
+                <Border x:Name="HoverOverlay" Background="{DynamicResource SurfaceHover}" CornerRadius="8"
+                        Opacity="0" IsHitTestVisible="False" />
+
+                <Grid Margin="5,0,9,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Cover art -->
+                    <Grid Grid.Column="0" Width="34" Height="34" VerticalAlignment="Center"
+                          Margin="0,0,9,0" MouseLeftButtonDown="OnCoverMouseDown">
+                        <Rectangle RadiusX="7" RadiusY="7"
+                                   Stroke="{DynamicResource CoverBorder}" StrokeThickness="1"
+                                   Fill="{DynamicResource CoverPlaceholder}" />
+                        <TextBlock Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="15" Foreground="{DynamicResource CoverGlyph}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Rectangle x:Name="CoverHost" RadiusX="7" RadiusY="7" Opacity="0" />
+                    </Grid>
+
+                    <!-- Track title / artist -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock x:Name="TitleText" Text="AIMP не запущен"
+                                   FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                        <TextBlock x:Name="ArtistText" Text="Нажмите, чтобы запустить плеер"
+                                   FontSize="10.5" Foreground="{DynamicResource TextSecondary}" Margin="0,1,0,0"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                    </StackPanel>
+
+                    <!-- Transport -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="PrevButton" Style="{StaticResource GlyphButton}"
+                                Click="OnPrevClick" ToolTip="Предыдущий трек">
+                            <Path Data="M2.6,1.8 V10.2 H4.2 V1.8 Z M11,1.8 L5.4,6 L11,10.2 Z"
+                                  Fill="{DynamicResource Icon}" Stretch="Uniform" Width="12" Height="12" />
+                        </Button>
+                        <Button x:Name="PlayButton" Style="{StaticResource GlyphButton}"
+                                Click="OnPlayClick" Margin="2,0" ToolTip="Воспроизведение / пауза">
+                            <Grid Width="12" Height="12">
+                                <Path x:Name="PlayIcon" Data="M2.8,1.4 L10.6,6 L2.8,10.6 Z"
+                                      Fill="{DynamicResource Icon}" Stretch="Uniform" Width="12" Height="12" />
+                                <Path x:Name="PauseIcon" Data="M2.6,1.6 H5 V10.4 H2.6 Z M7,1.6 H9.4 V10.4 H7 Z"
+                                      Fill="{DynamicResource Icon}" Stretch="Uniform" Width="12" Height="12"
+                                      Visibility="Collapsed" />
+                            </Grid>
+                        </Button>
+                        <Button x:Name="NextButton" Style="{StaticResource GlyphButton}"
+                                Click="OnNextClick" ToolTip="Следующий трек">
+                            <Path Data="M9.4,1.8 V10.2 H7.8 V1.8 Z M1,1.8 L6.6,6 L1,10.2 Z"
+                                  Fill="{DynamicResource Icon}" Stretch="Uniform" Width="12" Height="12" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Time -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"
+                                Margin="9,0,0,0" Width="76" HorizontalAlignment="Right">
+                        <TextBlock x:Name="TimeCurrent" Text="0:00" FontSize="10.5"
+                                   Foreground="{DynamicResource TextPrimary}" />
+                        <TextBlock x:Name="TimeTotal" Text=" / 0:00" FontSize="10.5"
+                                   Foreground="{DynamicResource TextTertiary}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Progress: starts to the right of the cover art -->
+                <Grid x:Name="ProgressHost" Height="9" VerticalAlignment="Bottom" Margin="48,0,12,2"
+                      Background="#01000000" Cursor="Hand"
+                      MouseLeftButtonDown="OnProgressMouseDown"
+                      MouseMove="OnProgressMouseMove"
+                      MouseLeftButtonUp="OnProgressMouseUp"
+                      MouseEnter="OnProgressMouseEnter"
+                      MouseLeave="OnProgressMouseLeave">
+                    <Border x:Name="ProgressTrack" Height="2" VerticalAlignment="Bottom" Margin="0,0,0,3"
+                            CornerRadius="1" Background="{DynamicResource ProgressTrack}" />
+                    <Border x:Name="ProgressFill" Height="2" VerticalAlignment="Bottom" Margin="0,0,0,3"
+                            CornerRadius="1" Background="{DynamicResource ProgressFill}" HorizontalAlignment="Left" Width="0" />
+                    <Border x:Name="ProgressThumb" Width="7" Height="7" CornerRadius="3.5"
+                            Background="{DynamicResource ProgressThumb}" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Margin="0,0,0,1" Opacity="0" IsHitTestVisible="False" />
+                </Grid>
+
+                <!-- Volume OSD: shown for a moment after a mouse-wheel change -->
+                <Border x:Name="VolumeBadge" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Width="76" Margin="0,0,9,0"
+                        Background="{DynamicResource MenuBackground}" BorderBrush="{DynamicResource MenuBorder}"
+                        BorderThickness="1" CornerRadius="9" Padding="9,4" Opacity="0"
+                        IsHitTestVisible="False" Panel.ZIndex="20">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="&#xE767;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                   FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="VolumeText" Text="100%" FontSize="11.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" Margin="6,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Popup x:Name="MenuPopup" Placement="Top" PlacementTarget="{Binding ElementName=Surface}"
+               VerticalOffset="-6" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Background="{DynamicResource MenuBackground}" BorderBrush="{DynamicResource MenuBorder}"
+                    BorderThickness="1" CornerRadius="10" Padding="4" Margin="14" MinWidth="236">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="2" Opacity="0.22" Color="#000000" />
+                </Border.Effect>
+                <StackPanel>
+                    <Button Style="{StaticResource MenuItemButton}" Click="OnOpenAimpClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="Открыть AIMP" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButton}" Click="OnDockClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="Закрепить у трея" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource MenuItemButton}" Click="OnAutoStartClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Path x:Name="AutoStartCheck" Grid.Column="0" Width="9" Height="9"
+                                  HorizontalAlignment="Left" VerticalAlignment="Center"
+                                  Data="M0,4.2 L3.2,7.4 L8.6,1.2" Stroke="{DynamicResource MenuAccent}"
+                                  StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Visibility="Collapsed" />
+                            <TextBlock Grid.Column="1" Text="Запускать при входе в Windows" />
+                        </Grid>
+                    </Button>
+                    <Border Height="1" Background="{DynamicResource MenuBorder}" Margin="6,4" />
+                    <Button Style="{StaticResource MenuItemButton}" Click="OnExitClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="Выход" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</Window>
