@@ -10,6 +10,11 @@
 
 ![Громкость колесом мыши](docs/volume-osd.png)
 
+## Скачать
+
+Готовый архив: **[AimpTaskbarPlayer-1.0-win-x64.zip](https://github.com/Whyhatend/aimp-taskbar-player/releases/latest)** —
+распаковать и запустить `install.ps1`.
+
 ## Что умеет
 
 - **Обложка** — встроенная в теги картинка (ID3/FLAC/MP4/Vorbis), иначе `cover.jpg`/`folder.jpg` из папки трека, иначе аккуратная заглушка.
