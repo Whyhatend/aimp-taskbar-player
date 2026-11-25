@@ -216,6 +216,15 @@
                             <TextBlock Grid.Column="1" Text="Запускать при входе в Windows" />
                         </Grid>
                     </Button>
+                    <Button Style="{StaticResource MenuItemButton}" Click="OnSettingsClick">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="Настройки…" />
+                        </Grid>
+                    </Button>
                     <Border Height="1" Background="{DynamicResource MenuBorder}" Margin="6,4" />
                     <Button Style="{StaticResource MenuItemButton}" Click="OnExitClick">
                         <Grid>

@@ -195,6 +195,12 @@ public sealed class AimpRemote : IDisposable
 
     public void SetVolume(int volume) => SetProperty(Native.RA_PROPERTY_VOLUME, Math.Clamp(volume, 0, 100));
 
+    public bool GetMute() => GetProperty(Native.RA_PROPERTY_MUTE) != 0;
+
+    public void SetMute(bool mute) => SetProperty(Native.RA_PROPERTY_MUTE, mute ? 1 : 0);
+
+    public void ToggleMute() => SetMute(!GetMute());
+
     public void SetPositionMs(int positionMs) => SetProperty(Native.RA_PROPERTY_PLAYER_POSITION, Math.Max(0, positionMs));
 
     public void PlayPause() => SendCommand(Native.CMD_PLAYPAUSE);
@@ -213,7 +219,13 @@ public sealed class AimpRemote : IDisposable
 
     public void SendCommand(int command) => Send(Native.WM_AIMP_COMMAND, command, 0);
 
-    private int GetProperty(int property) => (int)Send(Native.WM_AIMP_PROPERTY, property | Native.PROP_GET, 0);
+    private int GetProperty(int property)
+    {
+        // AIMP answers some properties with -1 (e.g. MUTE while muted), which does not
+        // fit into a checked IntPtr -> int conversion on 64-bit Windows.
+        var value = Send(Native.WM_AIMP_PROPERTY, property | Native.PROP_GET, 0);
+        return unchecked((int)value.ToInt64());
+    }
 
     private void SetProperty(int property, int value) => Send(Native.WM_AIMP_PROPERTY, property | Native.PROP_SET, value);
 

@@ -16,6 +16,7 @@ internal sealed class TrayIconHost : IDisposable
     private const int CmdOpen = 2;
     private const int CmdAutoStart = 3;
     private const int CmdExit = 4;
+    private const int CmdSettings = 5;
 
     private readonly HwndSource _source;
     private readonly uint _taskbarCreatedMessage;
@@ -29,6 +30,7 @@ internal sealed class TrayIconHost : IDisposable
 
     public event Action? ShowRequested;
     public event Action? OpenAimpRequested;
+    public event Action? SettingsRequested;
     public event Action? ExitRequested;
     public event Action? AutoStartToggled;
 
@@ -145,6 +147,7 @@ internal sealed class TrayIconHost : IDisposable
             Native.AppendMenu(menu, Native.MF_SEPARATOR, UIntPtr.Zero, null);
             Native.AppendMenu(menu, Native.MF_STRING | (_autoStart ? Native.MF_CHECKED : 0),
                 (UIntPtr)CmdAutoStart, "Запускать при входе в Windows");
+            Native.AppendMenu(menu, Native.MF_STRING, (UIntPtr)CmdSettings, "Настройки…");
             Native.AppendMenu(menu, Native.MF_SEPARATOR, UIntPtr.Zero, null);
             Native.AppendMenu(menu, Native.MF_STRING, (UIntPtr)CmdExit, "Выход");
 
@@ -169,6 +172,9 @@ internal sealed class TrayIconHost : IDisposable
                 case CmdAutoStart:
                     _autoStart = !_autoStart;
                     AutoStartToggled?.Invoke();
+                    break;
+                case CmdSettings:
+                    SettingsRequested?.Invoke();
                     break;
                 case CmdExit:
                     ExitRequested?.Invoke();

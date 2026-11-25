@@ -15,11 +15,10 @@ namespace AimpTaskbarPlayer;
 public partial class MainWindow : Window
 {
     private const int WheelDelta = 120;
-    private const int VolumeStep = 2;
 
     private readonly AimpRemote _aimp = new();
     private readonly ArtworkProvider _artwork = new();
-    private readonly AppSettings _settings = AppSettings.Load();
+    private readonly AppSettings _settings = ((App)Application.Current).Settings;
     private readonly DispatcherTimer _pollTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _stateTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     private readonly DispatcherTimer _volumeTimer = new() { Interval = TimeSpan.FromMilliseconds(1000) };
@@ -47,6 +46,9 @@ public partial class MainWindow : Window
     private bool _hasTransportState;
     private DateTime _lastInteraction = DateTime.UtcNow;
     private bool _trimming;
+
+    private SettingsWindow? _settingsWindow;
+    private int VolumeStepPercent => Math.Clamp(_settings.VolumeStep, 1, 20);
 
     public MainWindow()
     {
@@ -114,8 +116,11 @@ public partial class MainWindow : Window
         _tray = new TrayIconHost(autoStart);
         _tray.ShowRequested += ShowPanel;
         _tray.OpenAimpRequested += OpenAimp;
+        _tray.SettingsRequested += OpenSettings;
         _tray.ExitRequested += Close;
         _tray.AutoStartToggled += () => ApplyAutoStart(_tray.AutoStartChecked);
+
+        ((App)Application.Current).Hotkeys.Triggered += OnHotkeyTriggered;
 
         Theme.Changed += OnThemeChanged;
 
@@ -134,6 +139,7 @@ public partial class MainWindow : Window
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         Mouse.Capture(null);
+        ((App)Application.Current).Hotkeys.Triggered -= OnHotkeyTriggered;
         Theme.Changed -= OnThemeChanged;
         _pollTimer.Stop();
         _stateTimer.Stop();
@@ -484,17 +490,22 @@ public partial class MainWindow : Window
 
     private void AdjustVolume(int delta)
     {
-        if (!_connected) return;
-
         _wheelAccum += delta;
         var steps = _wheelAccum / WheelDelta;
         if (steps == 0) return;
         _wheelAccum -= steps * WheelDelta;
 
+        ChangeVolume(steps);
+    }
+
+    private void ChangeVolume(int steps)
+    {
+        if (!_connected) return;
+
         var current = _aimp.GetVolume();
         if (current < 0) return;
 
-        var target = Math.Clamp(current + steps * VolumeStep, 0, 100);
+        var target = Math.Clamp(current + steps * VolumeStepPercent, 0, 100);
         if (target != current) _aimp.SetVolume(target);
 
         ShowVolume(target);
@@ -755,6 +766,67 @@ public partial class MainWindow : Window
     {
         MenuPopup.IsOpen = false;
         Close();
+    }
+
+    private void OnSettingsClick(object sender, RoutedEventArgs e) => OpenSettings();
+
+    private void OpenSettings()
+    {
+        MenuPopup.IsOpen = false;
+
+        if (_settingsWindow is { IsLoaded: true })
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow(_settings);
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Show();
+        _settingsWindow.Activate();
+    }
+
+    // ---------------------------------------------------------------- hotkeys
+
+    private void OnHotkeyTriggered(HotkeyAction action)
+    {
+        switch (action)
+        {
+            case HotkeyAction.PlayPause:
+                TogglePlayback();
+                break;
+            case HotkeyAction.Next:
+                if (_connected) _aimp.Next();
+                break;
+            case HotkeyAction.Previous:
+                if (_connected) _aimp.Previous();
+                break;
+            case HotkeyAction.VolumeUp:
+                ChangeVolume(1);
+                break;
+            case HotkeyAction.VolumeDown:
+                ChangeVolume(-1);
+                break;
+            case HotkeyAction.Mute:
+                if (_connected) _aimp.ToggleMute();
+                break;
+            case HotkeyAction.TogglePanel:
+                TogglePanelVisibility();
+                break;
+        }
+    }
+
+    private void TogglePanelVisibility()
+    {
+        if (IsVisible)
+        {
+            _hiddenWithTaskbar = false;
+            Hide();
+        }
+        else
+        {
+            ShowPanel();
+        }
     }
 
     private void OnRootRightButtonUp(object sender, MouseButtonEventArgs e)

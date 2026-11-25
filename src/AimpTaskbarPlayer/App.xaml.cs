@@ -11,6 +11,12 @@ public partial class App : Application
 {
     private Mutex? _mutex;
 
+    /// <summary>One settings instance shared by the panel and the settings window.</summary>
+    public AppSettings Settings { get; private set; } = new();
+
+    /// <summary>Global hotkeys live for the whole process, even while the panel is hidden.</summary>
+    public HotkeyManager Hotkeys { get; private set; } = null!;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // A 404x48 layered window does not need a D3D device. Software rendering avoids
@@ -29,6 +35,10 @@ public partial class App : Application
 
         Theme.Initialize();
 
+        Settings = AppSettings.Load();
+        Hotkeys = new HotkeyManager();
+        Hotkeys.Apply(HotkeyManager.Resolve(Settings));
+
         DispatcherUnhandledException += (_, args) =>
         {
             LogError(args.Exception);
@@ -43,6 +53,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Hotkeys?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);
     }
